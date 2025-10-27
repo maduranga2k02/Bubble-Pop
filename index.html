@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Stress Relief</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Load Tone.js for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* 3. Custom font and base styling */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* 4. Define the floating animation */
+        @keyframes floatUp {
+            0% {
+                /* Start below the screen, small and invisible */
+                transform: translateY(100px) scale(0.5);
+                opacity: 0;
+            }
+            10% {
+                /* Fade in and grow to full size */
+                transform: translateY(0) scale(1);
+                opacity: 0.9;
+            }
+            90% {
+                /* Still visible while floating up */
+                opacity: 0.9;
+            }
+            100% {
+                /* Float off the top, slightly larger, and fade out */
+                transform: translateY(-800px) scale(1.1);
+                opacity: 0;
+            }
+        }
+
+        /* 5. Class to apply the animation */
+        .bubble {
+            /* We will control the animation-duration with JavaScript */
+            animation: floatUp linear;
+            will-change: transform, opacity;
+        }
+    </style>
+    <!-- 6. Configure Tailwind to use the 'Inter' font -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen text-gray-800 p-4">
+
+    <!-- Main Game Card -->
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center max-w-2xl w-full relative overflow-hidden">
+        
+        <!-- Start Overlay: Ensures audio can play after user interaction -->
+        <div id="start-overlay" class="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-2xl">
+            <h1 class="text-3xl font-bold text-blue-700 mb-4">HR Stress Relief Zone</h1>
+            <p class="text-lg text-gray-600 mb-8 px-4">Click the bubbles to pop your stress away!</p>
+            <button id="start-button" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+                Start Popping
+            </button>
+        </div>
+
+        <!-- Game Header (visible after start) -->
+        <h1 class="text-2xl sm:text-3xl font-bold text-blue-700 mb-2">Clear Your Mind</h1>
+        <p class="text-md sm:text-lg text-gray-600 mb-6">Pop the bubbles!</p>
+
+        <!-- Game Area: Where bubbles appear -->
+        <div id="game-area" class="h-96 sm:h-[500px] w-full bg-blue-50 rounded-lg shadow-inner relative overflow-hidden border border-blue-200">
+            <!-- Bubbles will be dynamically added here -->
+        </div>
+
+        <!-- Reset Button -->
+        <button id="reset-button" classs="mt-6 px-6 py-2 bg-gray-500 text-white rounded-lg shadow-md hover:bg-gray-600 transition-all focus:outline-none focus:ring-2 focus:ring-gray-400">
+            Reset
+        </button>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const gameArea = document.getElementById('game-area');
+        const startButton = document.getElementById('start-button');
+        const startOverlay = document.getElementById('start-overlay');
+        const resetButton = document.getElementById('reset-button');
+
+        // --- Game State ---
+        let gameInterval;
+        let audioStarted = false;
+        
+        // Simple synth for the "pop" sound
+        let synth;
+
+        // --- Data ---
+        const stressWords = [
+            'Deadline', 'Synergy', 'Urgent', 'Complaint', 'Policy', 'Meeting', 
+            'Review', 'Circle Back', 'ASAP', 'KPI', 'Hiring', 'Onboarding', 
+            'Fire', 'Report', 'Budget', 'Overtime'
+        ];
+        
+        const colors = [
+            'bg-blue-500', 'bg-teal-500', 'bg-indigo-500', 'bg-purple-500', 
+            'bg-sky-500', 'bg-rose-500'
+        ];
+
+        // --- Functions ---
+
+        /**
+         * Initializes the audio context.
+         * This MUST be called after a user clicks something.
+         */
+        async function initAudio() {
+            if (audioStarted) return;
+            await Tone.start();
+            // Create the synth *after* Tone is started
+            synth = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
+            }).toDestination();
+            audioStarted = true;
+            console.log('Audio Context Started');
+        }
+
+        /**
+         * Creates a single stress bubble.
+         */
+        function createBubble() {
+            const bubble = document.createElement('div');
+            
+            // 1. Setup appearance
+            const size = Math.floor(Math.random() * 60) + 80; // 80px to 140px
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const word = stressWords[Math.floor(Math.random() * stressWords.length)];
+            
+            bubble.classList.add(
+                'bubble', 'absolute', 'rounded-full', 'flex', 'items-center', 
+                'justify-center', 'text-white', 'font-medium', 'cursor-pointer', 
+                'select-none', 'shadow-md', 'opacity-0', 'scale-50', color
+            );
+            
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+            bubble.style.fontSize = `${size / 6}px`; // Scale font with bubble
+            
+            // 2. Setup position and animation
+            // Start at a random horizontal position
+            const gameAreaWidth = gameArea.clientWidth;
+            bubble.style.left = `${Math.random() * (gameAreaWidth - size)}px`;
+            // Animation duration determines float speed
+            bubble.style.animationDuration = `${Math.random() * 7 + 8}s`; // 8s to 15s
+            
+            bubble.textContent = word;
+            
+            // 3. Add "pop" behavior
+            bubble.addEventListener('click', () => {
+                if (!bubble.parentElement) return; // Already popped
+
+                // Play sound
+                if (synth) {
+                    synth.triggerAttackRelease("C5", "8n", Tone.now());
+                }
+                
+                // Pop animation
+                bubble.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+                bubble.style.transform = 'scale(1.2)';
+                bubble.style.opacity = '0';
+                
+                // Remove from DOM after animation
+                setTimeout(() => {
+                    bubble.remove();
+                }, 200);
+            });
+            
+            // 4. Auto-remove if it floats off-screen (matches animation duration)
+            bubble.addEventListener('animationend', () => {
+                bubble.remove();
+            });
+
+            // 5. Add to the game
+            gameArea.appendChild(bubble);
+        }
+
+        /**
+         * Starts the game loop.
+         */
+        function startGame() {
+            // Clear any existing game
+            clearInterval(gameInterval);
+            gameArea.innerHTML = '';
+            
+            // Hide the overlay
+            startOverlay.classList.add('opacity-0', '-z-10');
+            
+            // Start spawning bubbles
+            // Spawn a new bubble every 800ms
+            gameInterval = setInterval(createBubble, 800);
+        }
+
+        // --- Event Listeners ---
+        
+        startButton.addEventListener('click', () => {
+            initAudio(); // Initialize audio on the first click
+            startGame();
+        });
+
+        resetButton.addEventListener('click', () => {
+            // We don't need to re-init audio, just restart the game
+            startGame();
+        });
+        
+    </script>
+</body>
+</html>
